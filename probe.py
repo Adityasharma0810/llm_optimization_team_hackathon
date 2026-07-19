@@ -192,6 +192,8 @@ def detect_arm_features(cpu_features: list[str]) -> dict[str, bool]:
     results = {}
     for name, flag in ARM_FEATURES.items():
         results[name] = flag in cpu_features
+    if not results["DOTPROD"] and results["SVE2"]:
+        results["DOTPROD"] = True
     return results
 
 
