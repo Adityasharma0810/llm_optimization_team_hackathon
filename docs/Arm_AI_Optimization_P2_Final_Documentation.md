@@ -244,3 +244,9 @@ Commands executed:
 # Conclusion
 
 The project successfully implemented an optimized inference pipeline for Arm processors using llama.cpp. Quantization significantly improved throughput while preserving model quality. Speculative decoding was implemented and validated with a 43.48% acceptance rate; however, on the available 2-vCPU hardware it did not improve end-to-end throughput due to CPU contention. The REST API deployment, benchmarking, and reproducibility artifacts provide a solid foundation for further experimentation on larger Arm systems.
+
+Final Selection Rationale
+
+• Draft Model (IQ4_XS): Selected because it achieved the highest inference throughput while maintaining acceptable response quality.
+
+• Target Model (Q4_K_M): Selected because it provided the best trade-off between model size, inference speed, and output quality.
