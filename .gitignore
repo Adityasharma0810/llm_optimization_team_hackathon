@@ -1,0 +1,39 @@
+# .gitignore — Repository exclusions
+
+# Build artifacts
+build/
+*.o
+*.so
+*.a
+
+# Models (large, should not be committed)
+*.gguf
+models/
+
+# Secrets and keys
+*.pem
+*.key
+.env
+.env.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Logs
+*.log
+/tmp/

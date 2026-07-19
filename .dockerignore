@@ -1,0 +1,11 @@
+# .dockerignore — Exclude files from Docker build context.
+.git
+.github
+*.pem
+*.txt
+*.md
+*.py
+*.sh
+models/
+*.gguf
+.env
