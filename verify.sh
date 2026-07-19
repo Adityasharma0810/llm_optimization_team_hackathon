@@ -78,7 +78,7 @@ section "Build Tools"
 
 # GCC
 if cmd_exists gcc; then
-    GCC_VER=$(gcc --version 2>/dev/null | head -1 | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    GCC_VER=$(gcc --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     GCC_MAJOR=$(echo "${GCC_VER}" | cut -d. -f1)
     if [[ "${GCC_MAJOR}" -ge 11 ]]; then
         pass "gcc installed" "(${GCC_VER})"
@@ -91,7 +91,7 @@ fi
 
 # G++
 if cmd_exists g++; then
-    GPP_VER=$(g++ --version 2>/dev/null | head -1 | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    GPP_VER=$(g++ --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     GPP_MAJOR=$(echo "${GPP_VER}" | cut -d. -f1)
     if [[ "${GPP_MAJOR}" -ge 11 ]]; then
         pass "g++ installed" "(${GPP_VER})"
@@ -104,7 +104,7 @@ fi
 
 # CMake
 if cmd_exists cmake; then
-    CMAKE_VER=$(cmake --version 2>/dev/null | head -1 | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    CMAKE_VER=$(cmake --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     CMAKE_MAJOR=$(echo "${CMAKE_VER}" | cut -d. -f1)
     CMAKE_MINOR=$(echo "${CMAKE_VER}" | cut -d. -f2)
     if [[ "${CMAKE_MAJOR}" -ge 3 && "${CMAKE_MINOR}" -ge 21 ]] || [[ "${CMAKE_MAJOR}" -ge 4 ]]; then
@@ -118,7 +118,7 @@ fi
 
 # Git
 if cmd_exists git; then
-    GIT_VER=$(git --version 2>/dev/null | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    GIT_VER=$(git --version 2>/dev/null | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     pass "git installed" "(${GIT_VER})"
 else
     fail "git installed" "(not found)"
@@ -126,7 +126,7 @@ fi
 
 # Python3
 if cmd_exists python3; then
-    PY_VER=$(python3 --version 2>/dev/null | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    PY_VER=$(python3 --version 2>/dev/null | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     pass "python3 installed" "(${PY_VER})"
 else
     fail "python3 installed" "(not found)"
@@ -144,7 +144,7 @@ fi
 
 # Make (fallback build system)
 if cmd_exists make; then
-    MAKE_VER=$(make --version 2>/dev/null | head -1 | grep -oP '[\d]+\.[\d]+[\.\d]*')
+    MAKE_VER=$(make --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+(\.\d+)?' | head -1)
     pass "make installed" "(${MAKE_VER})"
 else
     warn "make not found" "(needed if ninja unavailable)"
@@ -157,7 +157,7 @@ section "ARM ISA Support"
 
 CPUINFO=""
 if [[ -f /proc/cpuinfo ]]; then
-    CPUINFO=$(grep -oP '(?<=Features\s{1,4}).*' /proc/cpuinfo | head -1)
+    CPUINFO=$(grep -oP '(?<=Features\s{1,4}).*' /proc/cpuinfo | head -1 | tr -d '\r')
 fi
 
 if [[ -z "${CPUINFO}" ]]; then
@@ -351,7 +351,7 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 section "Repository Scripts"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" | tr -d '\r')" && pwd)"
 
 for script in setup.sh verify.sh probe.py; do
     SCRIPT_PATH="${SCRIPT_DIR}/${script}"
