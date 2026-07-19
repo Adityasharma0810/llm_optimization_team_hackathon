@@ -361,7 +361,7 @@ def print_report(data: dict[str, Any]) -> None:
     _section("Hardware")
     _status("CPU Model", hw["cpu_model"])
     _status("Implementer", hw["cpu_implementer"])
-    _status("CPU Part", hw["part"] if hw["part"] != "N/A" else "N/A", ok=None)
+    _status("CPU Part", hw["cpu_part"] if hw["cpu_part"] != "N/A" else "N/A", ok=None)
     _status("Architecture", hw["architecture"])
     _status("Cores", str(hw["cores"]))
     _status("BogoMIPS", hw["bogomips"])
