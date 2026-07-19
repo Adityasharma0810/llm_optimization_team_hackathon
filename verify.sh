@@ -17,6 +17,7 @@ set -uo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" | tr -d '\r')" && pwd)"
 LLAMA_CPP_DIR="${HOME}/llama.cpp"
 BUILD_DIR="${LLAMA_CPP_DIR}/build"
 BIN_DIR="${BUILD_DIR}/bin"
@@ -174,7 +175,13 @@ else
     }
 
     check_feature "NEON"     "asimd"
-    check_feature "DOTPROD"  "dotprod"
+    if echo "${CPUINFO}" | grep -qw "dotprod"; then
+        pass "DOTPROD support"
+    elif echo "${CPUINFO}" | grep -qw "sve2"; then
+        pass "DOTPROD support" "(implicit via SVE2)"
+    else
+        fail "DOTPROD support" "(not detected)"
+    fi
     check_feature "SVE"      "sve"
     check_feature "SVE2"     "sve2"
     check_feature "I8MM"     "i8mm"
@@ -350,8 +357,6 @@ fi
 # Section 8: Environment Scripts
 # ──────────────────────────────────────────────────────────────────────────────
 section "Repository Scripts"
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" | tr -d '\r')" && pwd)"
 
 for script in setup.sh verify.sh probe.py; do
     SCRIPT_PATH="${SCRIPT_DIR}/${script}"
