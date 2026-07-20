@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "timestamp": "2026-07-20T09:55:39.579576+00:00",
+    "input_directory": "results"
+  },
+  "summary": {
+    "total_prompts": 93,
+    "successful_runs": 0,
+    "failed_runs": 93,
+    "average_ttft": 0.0,
+    "average_latency": 0.0,
+    "average_tokens_per_second": 0.0,
+    "average_cpu_usage": 0.0,
+    "average_memory_usage": 0.0,
+    "average_duration": 0.0,
+    "success_rate": 0.0,
+    "best_model": "",
+    "best_quantization": "",
+    "best_speedup": 0.0,
+    "timestamp": "2026-07-20T09:55:39.579576+00:00"
+  },
+  "benchmark": {
+    "total_prompts": 93,
+    "successful_runs": 0,
+    "failed_runs": 93,
+    "success_rate": 0.0
+  },
+  "speculative": {
+    "total_comparisons": 93,
+    "valid_comparisons": 0
+  },
+  "quantization": {
+    "total_models": 1,
+    "models": [
+      {
+        "model": "Q4_K_M",
+        "total_prompts": 93,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_ttft": 0.0,
+        "avg_latency": 0.0,
+        "avg_tokens_per_second": 0.0,
+        "avg_cpu_usage": 0.0,
+        "avg_memory_usage": 0.0,
+        "avg_duration": 0.0,
+        "rank": 1
+      }
+    ],
+    "leaderboard": [
+      {
+        "model": "Q4_K_M",
+        "total_prompts": 93,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_ttft": 0.0,
+        "avg_latency": 0.0,
+        "avg_tokens_per_second": 0.0,
+        "avg_cpu_usage": 0.0,
+        "avg_memory_usage": 0.0,
+        "avg_duration": 0.0,
+        "rank": 1
+      }
+    ]
+  }
+}

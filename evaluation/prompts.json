@@ -1,0 +1,324 @@
+{
+  "version": "0.2.0",
+  "categories": [
+    "short_qa",
+    "coding",
+    "math",
+    "reasoning",
+    "long_generation",
+    "chat",
+    "summarization"
+  ],
+  "prompts": [
+    {
+      "id": "sqa_01",
+      "category": "short_qa",
+      "name": "Capital of France",
+      "prompt": "What is the capital of France?",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 32,
+      "tags": ["geography", "factual"]
+    },
+    {
+      "id": "sqa_02",
+      "category": "short_qa",
+      "name": "Speed of light",
+      "prompt": "What is the speed of light in a vacuum in meters per second?",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 32,
+      "tags": ["physics", "factual"]
+    },
+    {
+      "id": "sqa_03",
+      "category": "short_qa",
+      "name": "Photosynthesis equation",
+      "prompt": "Write the balanced chemical equation for photosynthesis.",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 64,
+      "tags": ["chemistry", "factual"]
+    },
+    {
+      "id": "sqa_04",
+      "category": "short_qa",
+      "name": "Largest ocean",
+      "prompt": "Which is the largest ocean on Earth and what percentage of the Earth's surface does it cover?",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 64,
+      "tags": ["geography", "factual"]
+    },
+    {
+      "id": "sqa_05",
+      "category": "short_qa",
+      "name": "Binary conversion",
+      "prompt": "Convert the decimal number 255 to binary.",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 32,
+      "tags": ["computer-science", "math"]
+    },
+    {
+      "id": "sqa_06",
+      "category": "short_qa",
+      "name": "HTTP status codes",
+      "prompt": "List five common HTTP status codes and what each one means.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 128,
+      "tags": ["web", "networking", "factual"]
+    },
+    {
+      "id": "code_01",
+      "category": "coding",
+      "name": "FizzBuzz",
+      "prompt": "Write a Python function that prints the numbers from 1 to 100. For multiples of 3, print 'Fizz'. For multiples of 5, print 'Buzz'. For multiples of both, print 'FizzBuzz'.",
+      "expected_output_length": "medium",
+      "temperature": 0.2,
+      "max_tokens": 512,
+      "tags": ["python", "algorithm", "beginner"]
+    },
+    {
+      "id": "code_02",
+      "category": "coding",
+      "name": "Binary search",
+      "prompt": "Implement binary search in Python. The function should take a sorted list and a target value, and return the index of the target or -1 if not found. Include type hints.",
+      "expected_output_length": "medium",
+      "temperature": 0.2,
+      "max_tokens": 512,
+      "tags": ["python", "algorithm", "search"]
+    },
+    {
+      "id": "code_03",
+      "category": "coding",
+      "name": "LRU cache",
+      "prompt": "Implement an LRU cache in Python with get and put operations, both running in O(1) time. Use a class with a fixed capacity.",
+      "expected_output_length": "long",
+      "temperature": 0.2,
+      "max_tokens": 1024,
+      "tags": ["python", "data-structures", "design"]
+    },
+    {
+      "id": "code_04",
+      "category": "coding",
+      "name": "SQL query",
+      "prompt": "Given two tables: 'employees' (id, name, department_id, salary) and 'departments' (id, department_name), write a SQL query to find the department with the highest average salary.",
+      "expected_output_length": "short",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["sql", "database", "aggregation"]
+    },
+    {
+      "id": "code_05",
+      "category": "coding",
+      "name": "Regex email validator",
+      "prompt": "Write a Python function that uses a regular expression to validate email addresses. It should accept standard formats like user@example.com and reject invalid ones.",
+      "expected_output_length": "medium",
+      "temperature": 0.2,
+      "max_tokens": 512,
+      "tags": ["python", "regex", "validation"]
+    },
+    {
+      "id": "math_01",
+      "category": "math",
+      "name": "Derivative",
+      "prompt": "Find the derivative of f(x) = 3x^4 - 2x^3 + 7x - 5. Show all steps.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["calculus", "derivatives"]
+    },
+    {
+      "id": "math_02",
+      "category": "math",
+      "name": "Probability",
+      "prompt": "You roll two fair six-sided dice. What is the probability that the sum is 7? Show your reasoning.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["probability", "combinatorics"]
+    },
+    {
+      "id": "math_03",
+      "category": "math",
+      "name": "Fibonacci",
+      "prompt": "What is the 20th number in the Fibonacci sequence? Show the calculation.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["sequences", "arithmetic"]
+    },
+    {
+      "id": "math_04",
+      "category": "math",
+      "name": "Matrix multiplication",
+      "prompt": "Multiply these two matrices: A = [[1, 2], [3, 4]] and B = [[5, 6], [7, 8]]. Show the step-by-step calculation.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "tags": ["linear-algebra", "matrices"]
+    },
+    {
+      "id": "math_05",
+      "category": "math",
+      "name": "Compound interest",
+      "prompt": "If you invest $10,000 at an annual interest rate of 5% compounded monthly, how much money will you have after 10 years? Show the formula and calculation.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["finance", "arithmetic"]
+    },
+    {
+      "id": "reason_01",
+      "category": "reasoning",
+      "name": "Syllogism",
+      "prompt": "All roses are flowers. Some flowers wilt quickly. Can we logically conclude that some roses wilt quickly? Explain step by step whether this conclusion is valid.",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["logic", "syllogism", "formal-reasoning"]
+    },
+    {
+      "id": "reason_02",
+      "category": "reasoning",
+      "name": "Weighing puzzle",
+      "prompt": "You have 12 identical-looking balls. One is either heavier or lighter than the rest. Using a balance scale exactly 3 times, describe a strategy to identify the odd ball and determine whether it is heavier or lighter.",
+      "expected_output_length": "long",
+      "temperature": 0.0,
+      "max_tokens": 1024,
+      "tags": ["logic", "puzzle", "strategy"]
+    },
+    {
+      "id": "reason_03",
+      "category": "reasoning",
+      "name": "Trains problem",
+      "prompt": "Two trains start at the same time from cities A and B, 300 km apart, heading toward each other. Train A travels at 60 km/h and Train B at 90 km/h. After how many hours will they meet, and how far will each train have traveled?",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["physics", "word-problem", "kinematics"]
+    },
+    {
+      "id": "reason_04",
+      "category": "reasoning",
+      "name": "Logic grid",
+      "prompt": "Alice, Bob, and Charlie each own a different pet: a cat, a dog, and a fish. Alice does not own the cat. Bob does not own the fish. The dog owner's name starts with a letter after 'C' in the alphabet. Who owns which pet?",
+      "expected_output_length": "medium",
+      "temperature": 0.0,
+      "max_tokens": 256,
+      "tags": ["logic", "deduction", "constraint"]
+    },
+    {
+      "id": "reason_05",
+      "category": "reasoning",
+      "name": "Causal reasoning",
+      "prompt": "A city installs 500 new streetlights in a neighborhood. After one year, the crime rate in that neighborhood drops by 15%. The city claims the streetlights caused the crime reduction. What alternative explanations should be considered before accepting this conclusion?",
+      "expected_output_length": "long",
+      "temperature": 0.2,
+      "max_tokens": 512,
+      "tags": ["critical-thinking", "causation", "fallacies"]
+    },
+    {
+      "id": "long_01",
+      "category": "long_generation",
+      "name": "Essay on photosynthesis",
+      "prompt": "Write a detailed essay explaining the process of photosynthesis. Cover the light-dependent reactions, the Calvin cycle, and why photosynthesis is essential for life on Earth. Aim for at least 500 words.",
+      "expected_output_length": "long",
+      "temperature": 0.3,
+      "max_tokens": 1024,
+      "tags": ["biology", "essay", "science"]
+    },
+    {
+      "id": "long_02",
+      "category": "long_generation",
+      "name": "Short story",
+      "prompt": "Write a short story about a programmer who discovers that their AI assistant has been secretly fixing bugs in their code overnight. The story should have a beginning, middle, and end, and be at least 400 words long.",
+      "expected_output_length": "long",
+      "temperature": 0.7,
+      "max_tokens": 1024,
+      "tags": ["creative-writing", "fiction", "technology"]
+    },
+    {
+      "id": "long_03",
+      "category": "long_generation",
+      "name": "Technical documentation",
+      "prompt": "Write comprehensive API documentation for a REST endpoint that allows users to create, read, update, and delete todo items. Include the endpoint URLs, HTTP methods, request body schemas, response codes, and at least two example requests with responses.",
+      "expected_output_length": "long",
+      "temperature": 0.1,
+      "max_tokens": 1024,
+      "tags": ["technical-writing", "api", "documentation"]
+    },
+    {
+      "id": "long_04",
+      "category": "long_generation",
+      "name": "Research summary",
+      "prompt": "Write a detailed comparison of TCP and UDP protocols. Cover the three-way handshake, flow control, error recovery, use cases for each, and provide a table summarizing the differences. Write at least 400 words.",
+      "expected_output_length": "long",
+      "temperature": 0.1,
+      "max_tokens": 1024,
+      "tags": ["networking", "protocols", "technical"]
+    },
+    {
+      "id": "chat_01",
+      "category": "chat",
+      "name": "Python tutor",
+      "prompt": "I am a beginner learning Python. I keep getting a TypeError when I try to add a number and a string together. Can you explain why this happens and show me how to fix it?",
+      "expected_output_length": "medium",
+      "temperature": 0.3,
+      "max_tokens": 512,
+      "tags": ["python", "beginner", "debugging", "tutoring"]
+    },
+    {
+      "id": "chat_02",
+      "category": "chat",
+      "name": "Recipe suggestion",
+      "prompt": "I have chicken breast, garlic, olive oil, pasta, and some vegetables in my fridge. Can you suggest a simple dinner recipe using these ingredients and walk me through the steps?",
+      "expected_output_length": "long",
+      "temperature": 0.5,
+      "max_tokens": 512,
+      "tags": ["cooking", "recipe", "creative"]
+    },
+    {
+      "id": "chat_03",
+      "category": "chat",
+      "name": "Travel advice",
+      "prompt": "I am planning a 5-day trip to Japan next spring. I want to visit Tokyo and Kyoto. Can you suggest an itinerary that includes cultural sites, food recommendations, and transportation tips?",
+      "expected_output_length": "long",
+      "temperature": 0.4,
+      "max_tokens": 768,
+      "tags": ["travel", "planning", "japan"]
+    },
+    {
+      "id": "chat_04",
+      "category": "chat",
+      "name": "Debugging help",
+      "prompt": "My Python script is reading a CSV file but I keep getting a FileNotFoundError even though the file is in the same directory as the script. What are the most common causes of this issue?",
+      "expected_output_length": "medium",
+      "temperature": 0.2,
+      "max_tokens": 512,
+      "tags": ["python", "debugging", "filesystem"]
+    },
+    {
+      "id": "sum_01",
+      "category": "summarization",
+      "name": "Cloud computing",
+      "prompt": "Summarize what cloud computing is, its main service models (IaaS, PaaS, SaaS), and the key benefits for a small business in exactly five bullet points.",
+      "expected_output_length": "medium",
+      "temperature": 0.1,
+      "max_tokens": 256,
+      "tags": ["cloud", "infrastructure", "business"]
+    },
+    {
+      "id": "sum_02",
+      "category": "summarization",
+      "name": "Transformer architecture",
+      "prompt": "Explain the transformer neural network architecture in plain language for someone with no machine learning background. Cover self-attention, encoder-decoder structure, and why it revolutionized NLP.",
+      "expected_output_length": "long",
+      "temperature": 0.2,
+      "max_tokens": 768,
+      "tags": ["machine-learning", "deep-learning", "nlp"]
+    }
+  ]
+}
