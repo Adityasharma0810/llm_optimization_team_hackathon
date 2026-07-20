@@ -228,66 +228,37 @@ class BenchmarkRunner:
             requests.HTTPError: If the server returns a non-2xx status.
             ValueError: If the response body cannot be parsed as JSON.
         """
-        url = f"{self.config.server_url.rstrip('/')}/v1/chat/completions"
-        payload: dict[str, Any] = {
-            "model": self.config.model_name,
-            "messages": [{"role": "user", "content": prompt_text}],
+        url = f"{self.config.server_url.rstrip('/')}/completion"
+        payload = {
+            "prompt": prompt_text,
+            "n_predict": self.config.max_tokens,
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
-            "stream": True,
+            "stream": False,
         }
 
         logger.debug("POST %s (streaming)", url)
         t_start = time.perf_counter()
 
-        response = self._session.post(url, json=payload, timeout=self.config.timeout, stream=True)
+        response = self._session.post(
+            url,
+            json=payload,
+            timeout=self.config.timeout,
+        )
+
         response.raise_for_status()
 
-        collected_text = ""
-        timestamps_ms: list[float] = []
-        prompt_tokens = 0
-        completion_tokens = 0
-
-        for line in response.iter_lines(decode_unicode=True):
-            if line is None:
-                continue
-            line = line.strip()
-            if not line or line == "data: [DONE]":
-                continue
-            if not line.startswith("data: "):
-                continue
-
-            payload_str = line[len("data: "):]
-            try:
-                chunk = json.loads(payload_str)
-            except json.JSONDecodeError as e:
-                logger.warning("Failed to parse SSE chunk: %s", e)
-                continue
-
-            elapsed_ms = (time.perf_counter() - t_start) * 1000.0
-
-            choices = chunk.get("choices", [])
-            if choices:
-                delta = choices[0].get("delta", {})
-                content = delta.get("content")
-                if content is not None:
-                    collected_text += content
-                    timestamps_ms.append(elapsed_ms)
-
-            usage = chunk.get("usage")
-            if usage is not None:
-                prompt_tokens = usage.get("prompt_tokens", 0)
-                completion_tokens = usage.get("completion_tokens", 0)
+        data = response.json()
 
         duration_sec = time.perf_counter() - t_start
 
-        if completion_tokens == 0:
-            completion_tokens = len(collected_text.split())
+        response_text = data.get("content", "")
+        completion_tokens = data.get("tokens_predicted", 0)
+        prompt_tokens = data.get("tokens_evaluated", 0)
 
         return {
-            "response_text": collected_text,
-            "timestamps": timestamps_ms,
-            "tokens": len(timestamps_ms) if timestamps_ms else completion_tokens,
+            "response_text": response_text,
+            "timestamps": [],
+            "tokens": completion_tokens,
             "duration_sec": duration_sec,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
