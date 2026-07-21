@@ -72,9 +72,12 @@ llm_optimization_team_hackathon/
 ├── setup.sh              # One-command environment setup
 ├── verify.sh             # Dependency and build verification
 ├── probe.py              # Hardware capability detector
+├── auto_tune.py          # llama-server configuration sweep and adaptive speculation controller
+├── generate_final_report.py # Renders a final Markdown report from saved tuning artifacts
 ├── Dockerfile            # Multi-stage production Docker build
 ├── .dockerignore         # Docker build context exclusions
 ├── README.md             # This file
+├── tests/                # Unit tests for tuning and reporting components
 ├── .github/
 │   └── workflows/
 │       └── ci.yml        # GitHub Actions CI/CD pipeline
@@ -142,6 +145,77 @@ docker build -t llama-kleidai .
 docker run -p 8080:8080 -v ~/models:/models llama-kleidai \
   -m /models/model.gguf --host 0.0.0.0 --port 8080
 ```
+
+### Auto Tuning
+
+`auto_tune.py` runs a sequential llama-server configuration sweep over the
+selected thread, batch, micro-batch, and context settings. It benchmarks each
+candidate with the project workload, retains the existing highest-throughput
+configuration with a 100% success rate, and can optionally evaluate configured
+speculative-decoding draft lengths for that winner.
+
+The required argument is `--model-path`, which must point to the completed
+baseline model expected by the tuner. The target system must also have a built
+`llama-server` binary and a local GGUF model. For example:
+
+```bash
+python3 auto_tune.py \
+  --model-path ~/models/qwen2.5-0.5b-instruct-fp16.gguf \
+  --threads 1 2 \
+  --batch-sizes 256 512 \
+  --ubatch-sizes 256 512 \
+  --context-sizes 2048 \
+  --output results/auto_tune
+```
+
+Optional speculative evaluation requires a compatible draft GGUF model:
+
+```bash
+python3 auto_tune.py \
+  --model-path ~/models/qwen2.5-0.5b-instruct-fp16.gguf \
+  --draft-model-path ~/models/draft.gguf \
+  --draft-lengths 1 2 4 8 \
+  --minimum-speculative-improvement 0.05
+```
+
+The tuner writes its summary files under the selected output directory. See
+the generated-artifacts list below for details.
+
+### Final Report Generation
+
+`generate_final_report.py` creates a judge-facing Markdown report from saved
+auto-tuning data. It only reads existing artifacts; it does not start a server,
+run a benchmark, or change a tuning or speculative-decoding decision.
+
+It requires an auto-tune directory containing `tuning_results.json` and
+`speculative_results.json`, plus a previously saved JSON output from
+`probe.py --json` (for example, `results/auto_tune/probe_output.json`). It
+writes the requested report file:
+
+```bash
+python3 generate_final_report.py \
+  --auto-tune-dir results/auto_tune \
+  --output reports/final_report.md
+```
+
+### Generated Artifacts
+
+For an auto-tune output directory such as `results/auto_tune`, the workflow
+produces:
+
+- `tuning_results.json` — structured baseline, configuration-run, ranking, and
+  winning-configuration data.
+- `tuning_results.csv` — a flat table of every non-speculative configuration
+  attempt, including failed attempts.
+- `tuning_report.md` — a concise tuning summary with the selected normal
+  configuration and, when requested, the speculative-decoding decision.
+- `benchmarks/candidate_*/benchmark_results_*.json` and `.csv` — the existing
+  per-candidate benchmark reports emitted by the benchmark runner.
+- `speculative/speculative_results.json` and `.csv` — configured
+  speculative-decoding attempts and their adaptive decision, when a draft
+  model is supplied.
+- `reports/final_report.md` — the optional final report created by
+  `generate_final_report.py`.
 
 ---
 

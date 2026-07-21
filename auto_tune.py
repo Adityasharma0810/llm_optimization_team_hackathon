@@ -143,19 +143,12 @@ class ServerConfig:
 
 @dataclass(frozen=True)
 class TuningResult:
-    """A leaderboard-compatible result augmented with tuning metadata.
-
-    The first seven fields mirror ``LeaderboardEntry`` in
-    ``benchmark/compare_quantizations.py``.  The remaining fields capture the
-    candidate selected by the future autotuning execution layer.
-    """
+    """One measured tuning candidate using the autotuner's canonical metrics."""
 
     rank: int
     model: str
-    avg_tokens_per_second: float
     avg_ttft_ms: float
     avg_latency_ms: float
-    avg_memory_usage_mb: float
     success_rate: float
     threads: int
     batch_size: int
@@ -165,6 +158,16 @@ class TuningResult:
     p95_duration_s: float
     memory_mb: float
     score: float
+
+    @property
+    def avg_tokens_per_second(self) -> float:
+        """Backward-compatible alias for the canonical ``avg_tps`` metric."""
+        return self.avg_tps
+
+    @property
+    def avg_memory_usage_mb(self) -> float:
+        """Backward-compatible alias for the canonical ``memory_mb`` metric."""
+        return self.memory_mb
 
     def to_dict(self) -> dict[str, object]:
         """Serialize this result using the same field names as leaderboard rows."""
@@ -539,10 +542,8 @@ class BenchmarkRunner:
             # schema.  This single-run layer performs no ranking or scoring.
             rank=0,
             model=Path(config.model_path).name,
-            avg_tokens_per_second=avg_tps,
             avg_ttft_ms=avg_ttft_ms,
             avg_latency_ms=avg_latency_ms,
-            avg_memory_usage_mb=avg_memory_mb,
             success_rate=(len(successful) / total * 100.0) if total else 0.0,
             threads=config.threads,
             batch_size=config.batch_size,

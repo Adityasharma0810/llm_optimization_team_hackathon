@@ -17,8 +17,7 @@ from auto_tune import (
 
 def result(tps: float, *, success_rate: float = 100.0) -> TuningResult:
     return TuningResult(
-        rank=1, model="target.gguf", avg_tokens_per_second=tps,
-        avg_ttft_ms=10.0, avg_latency_ms=2.0, avg_memory_usage_mb=100.0,
+        rank=1, model="target.gguf", avg_ttft_ms=10.0, avg_latency_ms=2.0,
         success_rate=success_rate, threads=2, batch_size=512, draft_max=None,
         speculative_enabled=False, avg_tps=tps, p95_duration_s=1.0,
         memory_mb=100.0, score=tps,
