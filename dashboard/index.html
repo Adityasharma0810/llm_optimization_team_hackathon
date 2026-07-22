@@ -1,0 +1,919 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SpecArm — Arm AI Optimization Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--card:#161b22;--card2:#1c2128;--border:#30363d;
+  --accent:#58a6ff;--arm:#0091BD;--green:#3fb950;--red:#f85149;
+  --yellow:#d29922;--text:#e6edf3;--dim:#8b949e;--sub:#6e7681;
+  --r:8px;--rl:12px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.row{display:flex;align-items:center;gap:8px}
+.between{display:flex;align-items:center;justify-content:space-between}
+/* Header */
+header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:0;z-index:100}
+.hdr{max-width:1280px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{width:36px;height:36px;background:linear-gradient(135deg,var(--arm),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff}
+.logo-name{font-size:18px;font-weight:700}
+.logo-tag{font-size:11px;color:var(--dim)}
+.badge{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--sub);transition:background .3s}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--red)}
+.dot.spin{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* Nav */
+.nav{display:flex;gap:4px}
+.ntab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--dim);transition:all .2s;border:1px solid transparent;background:none}
+.ntab:hover{color:var(--text);background:var(--card2)}
+.ntab.on{color:var(--accent);background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.3)}
+/* Sections */
+.sec{padding:32px 0;border-bottom:1px solid var(--border)}
+.sec:last-child{border-bottom:none}
+.sec-ttl{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.sec-sub{color:var(--dim);font-size:13px;margin-bottom:20px}
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color .2s}
+.card:hover{border-color:#484f58}
+.card-ttl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin-bottom:10px}
+.card-val{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+.card-unit{font-size:14px;font-weight:400;color:var(--dim);margin-left:4px}
+.card-sub{font-size:12px;color:var(--sub);margin-top:6px}
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.4px}
+.pill-g{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.pill-r{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.pill-b{background:rgba(88,166,255,.12);color:var(--accent);border:1px solid rgba(88,166,255,.3)}
+.pill-a{background:rgba(0,145,189,.15);color:var(--arm);border:1px solid rgba(0,145,189,.3)}
+.pill-gray{background:rgba(139,148,158,.1);color:var(--dim);border:1px solid var(--border)}
+/* Comparison */
+.cmp-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.cmp-grid{grid-template-columns:1fr}.cmp-mid{display:none}}
+.cmp-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color .2s,box-shadow .2s}
+.cmp-card.is-opt{border-color:rgba(88,166,255,.4)}
+.cmp-card.is-opt:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(88,166,255,.1)}
+.cmp-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:4px}
+.cmp-card.is-opt .cmp-label{color:var(--accent)}
+.cmp-model{font-size:13px;font-weight:500;margin-bottom:16px}
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border-bottom:none}
+.mlbl{font-size:12px;color:var(--dim)}
+.mval{font-size:14px;font-weight:700}
+.mval.hi{color:var(--accent)}
+.mval.g{color:var(--green)}
+.cmp-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding-top:50px}
+.vs{width:40px;height:40px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dim)}
+.speedup{display:inline-flex;align-items:center;justify-content:center;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.speedup.neg{background:rgba(248,81,73,.1);color:var(--red);border-color:rgba(248,81,73,.3)}
+/* Metric stat cards */
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:18px}
+.stat-ttl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);margin-bottom:8px}
+.stat-val{font-size:28px;font-weight:700;letter-spacing:-1px}
+.stat-sub{font-size:11px;color:var(--sub);margin-top:4px}
+/* Chart */
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:20px;margin-top:16px;overflow-x:auto}
+.chart-ttl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin-bottom:16px}
+/* Forms */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.flbl{font-size:12px;font-weight:600;color:var(--dim)}
+.finp{background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:8px 12px;font-size:13px;outline:none;transition:border-color .2s;width:100%}
+.finp:focus{border-color:var(--accent)}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .2s;outline:none}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#0d1117;border-color:var(--accent)}
+.btn-primary:hover:not(:disabled){background:#79b8ff}
+.btn-arm{background:var(--arm);color:#fff;border-color:var(--arm)}
+.btn-arm:hover:not(:disabled){background:#00aad9}
+.btn-ghost{background:transparent;color:var(--dim);border-color:var(--border)}
+.btn-ghost:hover:not(:disabled){color:var(--text);background:var(--card2)}
+.btn-sm{padding:5px 12px;font-size:12px}
+/* Terminal */
+.term{background:#0a0e13;border:1px solid #1e2730;border-radius:var(--r);padding:14px 16px;font-family:"Cascadia Code","Fira Code",Consolas,monospace;font-size:12px;color:#4caf50;min-height:160px;max-height:360px;overflow-y:auto;line-height:1.7;white-space:pre-wrap;word-break:break-all;display:none}
+.term.open{display:block}
+/* Spinner */
+.spin-el{width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+.spin-sm{width:12px;height:12px;border-width:2px}
+@keyframes rot{to{transform:rotate(360deg)}}
+/* Textarea */
+.ta{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:11px 13px;font-size:14px;resize:vertical;min-height:80px;font-family:inherit;outline:none;transition:border-color .2s}
+.ta:focus{border-color:var(--accent)}
+/* Presets */
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.preset{padding:4px 12px;border-radius:14px;background:rgba(88,166,255,.08);color:var(--accent);border:1px solid rgba(88,166,255,.2);font-size:12px;cursor:pointer;transition:all .2s}
+.preset:hover{background:rgba(88,166,255,.18)}
+/* Response box */
+.resp-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-top:12px;display:none}
+.resp-box.open{display:block}
+.resp-text{color:var(--text);font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow-y:auto}
+.resp-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--dim)}
+.resp-meta strong{color:var(--accent)}
+/* Table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--rl)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--card2);color:var(--dim);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--card2)}
+tbody tr.sel{background:rgba(88,166,255,.07)}
+tbody td{padding:10px 14px}
+.td-mono{font-family:monospace;font-size:12px;color:var(--dim)}
+/* Sysinfo */
+.si-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.si-lbl{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.si-val{font-size:14px;font-weight:500}
+.feat-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+/* Offline note */
+.offline{display:flex;align-items:center;gap:10px;background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.2);border-radius:var(--r);padding:10px 14px;color:var(--dim);font-size:13px;margin-bottom:16px}
+.offline.hidden{display:none}
+/* Config panel */
+.cfg-panel{background:var(--card2);border:1px solid var(--border);border-radius:var(--rl);padding:20px;margin-top:14px;display:none}
+.cfg-panel.open{display:block}
+/* Misc */
+.hidden{display:none!important}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+.mb8{margin-bottom:8px}.mb16{margin-bottom:16px}
+.text-dim{color:var(--dim)}.text-sub{color:var(--sub)}.text-g{color:var(--green)}.text-r{color:var(--red)}.text-a{color:var(--accent)}
+.empty{text-align:center;padding:32px 16px;color:var(--sub);font-size:13px}
+/* Skeleton */
+.sk{background:linear-gradient(90deg,var(--card2) 25%,#1e2530 50%,var(--card2) 75%);background-size:200% 100%;animation:sk 1.5s infinite;border-radius:4px}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk-t{height:14px;width:75%;margin:5px 0}
+.sk-v{height:28px;width:55%;margin:8px 0}
+/* json viewer */
+.jv{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-top:12px;display:none;max-height:460px;overflow-y:auto}
+.jv.open{display:block}
+.jv pre{font-family:"Cascadia Code",Consolas,monospace;font-size:11.5px;line-height:1.6;white-space:pre;overflow-x:auto}
+.jk{color:#79c0ff}.js{color:#a5d6ff}.jn{color:#f0883e}.jb{color:#d2a8ff}.jz{color:var(--sub)}
+/* Divider */
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <div class="hdr">
+    <div class="logo">
+      <div class="logo-mark">SA</div>
+      <div>
+        <div class="logo-name">SpecArm</div>
+        <div class="logo-tag">Arm AI Optimization · Speculative Decoding · KleidiAI</div>
+      </div>
+    </div>
+    <div class="row" style="gap:12px">
+      <nav class="nav" id="navTabs">
+        <button class="ntab on" data-s="overview">Overview</button>
+        <button class="ntab" data-s="benchmark">Benchmark</button>
+        <button class="ntab" data-s="tryit">Try&nbsp;It</button>
+        <button class="ntab" data-s="history">History</button>
+      </nav>
+      <div class="badge">
+        <div class="dot spin" id="sDot"></div>
+        <span id="sTxt">Checking…</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="wrap">
+
+<!-- offline warning -->
+<div class="offline hidden mt12" id="offlineNote">
+  ⚠️ &nbsp;llama-server offline — benchmark runs will fail. Existing results still load.
+</div>
+
+<!-- ══════════ OVERVIEW ══════════ -->
+<section class="sec" id="sec-overview">
+
+  <!-- stat row -->
+  <div class="g4 mt8 mb16" id="statRow">
+    <div class="stat-card">
+      <div class="stat-ttl">Best Avg TPS</div>
+      <div class="stat-val text-a" id="st-tps"><span class="sk sk-v" style="width:80px;display:inline-block"></span></div>
+      <div class="stat-sub">tokens / second</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ttl">Success Rate</div>
+      <div class="stat-val text-g" id="st-sr"><span class="sk sk-v" style="width:60px;display:inline-block"></span></div>
+      <div class="stat-sub">benchmark prompts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ttl">Total Runs Saved</div>
+      <div class="stat-val" id="st-runs"><span class="sk sk-v" style="width:40px;display:inline-block"></span></div>
+      <div class="stat-sub">benchmark sessions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ttl">Speedup</div>
+      <div class="stat-val" id="st-speedup"><span class="sk sk-v" style="width:60px;display:inline-block"></span></div>
+      <div class="stat-sub">latest vs previous</div>
+    </div>
+  </div>
+
+  <!-- model comparison -->
+  <div class="sec-ttl">⚡ Model Comparison</div>
+  <div class="sec-sub" id="cmpSubtitle">Latest run vs previous run — click any row in History to change baseline</div>
+
+  <div class="cmp-grid" id="cmpGrid">
+    <!-- baseline left -->
+    <div class="cmp-card" id="cmpLeft">
+      <div class="cmp-label">Baseline / Previous Run</div>
+      <div class="cmp-model" id="cmpLeftModel">Qwen2.5-1.5B · target only</div>
+      <div id="cmpLeftMetrics"><div class="empty">Run a benchmark or select a row in History to populate.</div></div>
+    </div>
+    <!-- centre VS -->
+    <div class="cmp-mid">
+      <div class="vs">VS</div>
+      <div id="cmpSpeedup"></div>
+    </div>
+    <!-- optimised right -->
+    <div class="cmp-card is-opt" id="cmpRight">
+      <div class="cmp-label">Optimised / Latest Run</div>
+      <div class="cmp-model" id="cmpRightModel">Qwen2.5 · Speculative Decoding</div>
+      <div id="cmpRightMetrics"><div class="empty">No benchmark data yet.</div></div>
+    </div>
+  </div>
+
+  <!-- category chart -->
+  <div class="chart-box mt16">
+    <div class="chart-ttl">Tokens/sec by Category — Baseline (gray) vs Latest (blue)</div>
+    <svg id="catChart" style="width:100%;min-width:420px;display:block" height="240" aria-label="Category throughput chart"></svg>
+    <div class="row mt8" style="font-size:12px;color:var(--dim);gap:16px">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#484f58;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Baseline</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Latest / Speculative</span>
+    </div>
+  </div>
+
+  <!-- system info -->
+  <div class="sec-ttl mt24">🖥 System Info</div>
+  <div class="sec-sub">AWS Graviton hardware — Arm ISA features — KleidiAI build</div>
+  <div class="card" id="siCard">
+    <div class="si-grid" id="siGrid">
+      <div><div class="si-lbl">CPU</div><div class="si-val sk sk-t" id="si-cpu" style="min-width:140px"></div></div>
+      <div><div class="si-lbl">Cores</div><div class="si-val sk sk-t" id="si-cores"></div></div>
+      <div><div class="si-lbl">Memory</div><div class="si-val sk sk-t" id="si-mem"></div></div>
+      <div><div class="si-lbl">OS / Arch</div><div class="si-val sk sk-t" id="si-os"></div></div>
+      <div><div class="si-lbl">KleidiAI</div><div class="si-val sk sk-t" id="si-klei"></div></div>
+      <div><div class="si-lbl">llama.cpp build</div><div class="si-val sk sk-t" id="si-llama"></div></div>
+    </div>
+    <div class="feat-pills" id="featPills"></div>
+  </div>
+
+</section>
+
+<!-- ══════════ BENCHMARK ══════════ -->
+<section class="sec hidden" id="sec-benchmark">
+  <div class="sec-ttl">🚀 Run Benchmark</div>
+  <div class="sec-sub">Trigger the benchmark harness against the live llama-server. Watch output in real time.</div>
+
+  <div class="row" style="flex-wrap:wrap;gap:10px">
+    <button class="btn btn-primary" id="btnToggleCfg" onclick="toggleCfg()">⚙ Configure &amp; Run</button>
+    <button class="btn btn-ghost hidden" id="btnCancel" onclick="cancelBench()">✕ Cancel</button>
+    <span id="benchPill"></span>
+  </div>
+
+  <div class="cfg-panel" id="cfgPanel">
+    <div class="form-row">
+      <div class="fg">
+        <label class="flbl">llama-server URL</label>
+        <input class="finp" id="cfgUrl" value="http://13.211.208.159:8080"/>
+      </div>
+      <div class="fg">
+        <label class="flbl">Model label</label>
+        <input class="finp" id="cfgModel" value="Q4_K_M"/>
+      </div>
+      <div class="fg">
+        <label class="flbl">Trials per prompt</label>
+        <input class="finp" id="cfgTrials" type="number" value="3" min="1" max="10"/>
+      </div>
+      <div class="fg">
+        <label class="flbl">Max tokens</label>
+        <input class="finp" id="cfgTok" type="number" value="64" min="16" max="512"/>
+      </div>
+    </div>
+    <div class="row" style="gap:8px">
+      <button class="btn btn-arm" id="btnStart" onclick="startBench()">▶ Start Benchmark</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleCfg()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="term mt16" id="logTerm" role="log" aria-live="polite"></div>
+
+  <!-- Result summary injected here after run -->
+  <div id="benchResult" class="hidden mt16"></div>
+</section>
+
+<!-- ══════════ TRY IT ══════════ -->
+<section class="sec hidden" id="sec-tryit">
+  <div class="sec-ttl">💬 Try It Live</div>
+  <div class="sec-sub">Send a prompt directly to the running llama-server and see the response.</div>
+
+  <div class="presets" id="presetBtns">
+    <button class="preset" onclick="usePreset(this)">Explain speculative decoding</button>
+    <button class="preset" onclick="usePreset(this)">What is KleidiAI?</button>
+    <button class="preset" onclick="usePreset(this)">Write a Python quicksort</button>
+    <button class="preset" onclick="usePreset(this)">What is the capital of France?</button>
+    <button class="preset" onclick="usePreset(this)">Explain Arm NEON SIMD in one paragraph</button>
+  </div>
+
+  <div class="row mb8" style="flex-wrap:wrap;gap:10px">
+    <div class="fg" style="flex:1;min-width:200px">
+      <label class="flbl">Server URL</label>
+      <input class="finp" id="tryUrl" value="http://13.211.208.159:8080"/>
+    </div>
+    <div class="fg" style="min-width:120px">
+      <label class="flbl">Max tokens</label>
+      <input class="finp" id="tryTok" type="number" value="256" min="16" max="1024"/>
+    </div>
+    <div class="fg" style="min-width:110px">
+      <label class="flbl">Temperature</label>
+      <input class="finp" id="tryTemp" type="number" value="0.7" min="0" max="2" step="0.1"/>
+    </div>
+  </div>
+
+  <textarea class="ta" id="promptIn" rows="4" placeholder="Type your prompt… (Enter to send, Shift+Enter for newline)"></textarea>
+  <div class="row mt8 mb8" style="gap:8px">
+    <button class="btn btn-primary" id="btnSend" onclick="sendPrompt()">➤ Send</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearTry()">Clear</button>
+  </div>
+
+  <div class="resp-box" id="respBox">
+    <div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">Response</div>
+    <div class="resp-text" id="respText"></div>
+    <div class="resp-meta" id="respMeta"></div>
+  </div>
+</section>
+
+<!-- ══════════ HISTORY ══════════ -->
+<section class="sec hidden" id="sec-history">
+  <div class="between mb16">
+    <div>
+      <div class="sec-ttl">📊 Benchmark History</div>
+      <div class="sec-sub">All saved runs. Click a row to compare it against the latest run.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+  </div>
+  <div id="histWrap"><div class="empty">Loading…</div></div>
+
+  <!-- JSON viewer toggle -->
+  <div id="jvToggleRow" class="hidden mt12" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);font-size:13px;color:var(--dim)" onclick="toggleJV()">
+    <span>📄 Raw JSON — <span id="jvFile"></span></span>
+    <span id="jvChev">▼</span>
+  </div>
+  <div class="jv" id="jvBox"><pre id="jvPre"></pre></div>
+</section>
+
+</main>
+
+<footer style="border-top:1px solid var(--border);padding:18px 0;margin-top:8px">
+  <div class="wrap between" style="flex-wrap:wrap;gap:8px">
+    <span style="color:var(--sub);font-size:12px">SpecArm · Arm AI Optimization Hackathon · AWS Graviton2 t4g.small · llama.cpp + KleidiAI</span>
+    <span style="color:var(--sub);font-size:12px" id="footNote"></span>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let allRuns = [];          // all benchmark summaries from API
+let leftRun  = null;       // baseline (left comparison card)
+let rightRun = null;       // optimised/latest (right card)
+let evtSrc   = null;       // EventSource for bench stream
+let benchRunning = false;
+
+// ═══════════════════════════════════════════════════════════
+// Tiny helpers
+// ═══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => (typeof n === 'number' && !isNaN(n)) ? n.toFixed(d) : '—';
+const fmtPct = n => (typeof n === 'number' && !isNaN(n)) ? n.toFixed(1)+'%' : '—';
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function fmtDate(iso){
+  if(!iso) return '—';
+  return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+// ═══════════════════════════════════════════════════════════
+// Navigation
+// ═══════════════════════════════════════════════════════════
+const SECS = ['overview','benchmark','tryit','history'];
+function showSec(name){
+  SECS.forEach(s => $('sec-'+s).classList.toggle('hidden', s !== name));
+  document.querySelectorAll('.ntab').forEach(t => t.classList.toggle('on', t.dataset.s === name));
+}
+document.querySelectorAll('.ntab').forEach(t => t.addEventListener('click', ()=> showSec(t.dataset.s)));
+
+// ═══════════════════════════════════════════════════════════
+// Server status polling
+// ═══════════════════════════════════════════════════════════
+async function checkStatus(){
+  try{
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    const ok = d.llama_server && d.llama_server.ok;
+    $('sDot').className = 'dot ' + (ok ? 'on' : 'off');
+    $('sTxt').textContent = ok ? 'Server Live' : 'Server Offline';
+    $('offlineNote').classList.toggle('hidden', ok);
+  } catch(e){
+    $('sDot').className = 'dot off';
+    $('sTxt').textContent = 'Unreachable';
+    $('offlineNote').classList.remove('hidden');
+  }
+}
+setInterval(checkStatus, 12000);
+checkStatus();
+
+// ═══════════════════════════════════════════════════════════
+// Load sysinfo
+// ═══════════════════════════════════════════════════════════
+async function loadSysinfo(){
+  try{
+    const r = await fetch('/api/sysinfo');
+    const d = await r.json();
+    const s = d.summary || {};
+    function setSI(id, val){
+      const el=$(id);
+      el.textContent = val || 'N/A';
+      el.classList.remove('sk','sk-t');
+    }
+    setSI('si-cpu',   s.cpu);
+    setSI('si-cores', String(s.cores||''));
+    setSI('si-mem',   s.memory);
+    setSI('si-os',    (s.os||'N/A') + ' / ' + (s.arch||'N/A'));
+    setSI('si-klei',  s.kleidiai || 'N/A');
+    setSI('si-llama', s.llama_build || 'N/A');
+
+    const pills = $('featPills');
+    pills.innerHTML = '';
+    [['NEON', s.neon],['DOTPROD', s.dotprod],['SVE', s.sve],['I8MM', s.i8mm]].forEach(([n,v])=>{
+      pills.insertAdjacentHTML('beforeend',`<span class="pill ${v?'pill-g':'pill-r'}">${n}</span>`);
+    });
+  } catch(e){ /* probe.py unavailable on dev machine — silently skip */ }
+}
+loadSysinfo();
+
+// ═══════════════════════════════════════════════════════════
+// Load all benchmark results
+// ═══════════════════════════════════════════════════════════
+async function loadAll(){
+  try{
+    const r = await fetch('/api/results');
+    const d = await r.json();
+    allRuns = d.runs || [];
+
+    // Pick sensible defaults for comparison
+    // rightRun = most recent run with actual data (avg_tps > 0)
+    // leftRun  = second-most-recent with data, or same if only one
+    const realRuns = allRuns.filter(r => r.avg_tps > 0);
+    rightRun = realRuns.length > 0 ? realRuns[0] : (allRuns[0] || null);
+    leftRun  = realRuns.length > 1 ? realRuns[1] : rightRun;
+
+    renderStats();
+    renderComparison();
+    renderChart();
+    renderHistory();
+    $('footNote').textContent = `${allRuns.length} benchmark run(s) saved`;
+  } catch(e){
+    console.error('[loadAll]', e);
+    $('histWrap').innerHTML = `<div class="empty">Failed to load results: ${esc(e.message)}</div>`;
+  }
+}
+loadAll();
+
+// ═══════════════════════════════════════════════════════════
+// Stat cards (top row)
+// ═══════════════════════════════════════════════════════════
+function renderStats(){
+  if(!rightRun){ return; }
+  $('st-tps').textContent  = fmt(rightRun.avg_tps);
+  $('st-sr').textContent   = fmtPct(rightRun.success_rate);
+  $('st-runs').textContent = allRuns.length;
+
+  if(leftRun && rightRun && leftRun !== rightRun && leftRun.avg_tps > 0){
+    const diff = ((rightRun.avg_tps / leftRun.avg_tps) - 1) * 100;
+    const sign = diff >= 0 ? '+' : '';
+    $('st-speedup').innerHTML = `<span class="${diff>=0?'text-g':'text-r'}">${sign}${fmt(diff,1)}%</span>`;
+  } else {
+    $('st-speedup').textContent = '—';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Comparison cards
+// ═══════════════════════════════════════════════════════════
+function metricsHTML(run, isRight){
+  if(!run || run.avg_tps === 0)
+    return `<div class="empty" style="padding:16px 0">No data — run the benchmark first.</div>`;
+  const c = isRight ? ' hi' : '';
+  return `
+    <div class="mrow"><span class="mlbl">Avg TPS</span><span class="mval${c}">${fmt(run.avg_tps)}</span></div>
+    <div class="mrow"><span class="mlbl">Median TPS</span><span class="mval${c}">${fmt(run.median_tps)}</span></div>
+    <div class="mrow"><span class="mlbl">P95 TPS</span><span class="mval">${fmt(run.p95_tps)}</span></div>
+    <div class="mrow"><span class="mlbl">Min TPS</span><span class="mval">${fmt(run.min_tps)}</span></div>
+    <div class="mrow"><span class="mlbl">Avg duration</span><span class="mval">${fmt(run.avg_duration_sec,3)}s</span></div>
+    <div class="mrow"><span class="mlbl">Prompts</span><span class="mval">${run.total_prompts||'—'}</span></div>
+    <div class="mrow"><span class="mlbl">Success rate</span><span class="mval g">${fmtPct(run.success_rate)}</span></div>
+    <div class="mrow"><span class="mlbl">Trials × max-tok</span><span class="mval">${run.trials||'—'} × ${run.max_tokens||'—'}</span></div>
+    <div class="mrow"><span class="mlbl">Timestamp</span><span class="mval" style="font-size:12px">${fmtDate(run.timestamp)}</span></div>
+  `;
+}
+
+function renderComparison(){
+  $('cmpLeftMetrics').innerHTML  = metricsHTML(leftRun, false);
+  $('cmpRightMetrics').innerHTML = metricsHTML(rightRun, true);
+
+  // Labels
+  if(leftRun)  $('cmpLeftModel').textContent  = `${leftRun.model||'Q4_K_M'} · ${fmtDate(leftRun.timestamp)}`;
+  if(rightRun) $('cmpRightModel').textContent = `${rightRun.model||'Q4_K_M'} · ${fmtDate(rightRun.timestamp)}`;
+
+  // Speedup badge
+  const sb = $('cmpSpeedup');
+  if(leftRun && rightRun && leftRun !== rightRun && leftRun.avg_tps > 0 && rightRun.avg_tps > 0){
+    const diff = ((rightRun.avg_tps / leftRun.avg_tps) - 1) * 100;
+    const sign = diff >= 0 ? '+' : '';
+    sb.innerHTML = `<div class="speedup ${diff<0?'neg':''}">${sign}${fmt(diff,1)}%<br><span style="font-size:10px;font-weight:400">TPS change</span></div>`;
+  } else if(rightRun && rightRun.avg_tps > 0){
+    sb.innerHTML = `<div class="speedup">${fmt(rightRun.avg_tps)}<br><span style="font-size:10px;font-weight:400">tok/s</span></div>`;
+  } else {
+    sb.innerHTML = '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SVG Bar Chart
+// ═══════════════════════════════════════════════════════════
+function renderChart(){
+  const svg = $('catChart');
+  svg.innerHTML = '';
+
+  const CATS   = ['short_qa','coding','math','reasoning','long_generation','chat','summarization'];
+  const LABELS = {short_qa:'Short QA',coding:'Coding',math:'Math',reasoning:'Reasoning',
+                  long_generation:'Long Gen',chat:'Chat',summarization:'Summary'};
+
+  const lTPS = leftRun  ? (leftRun.category_tps  || {}) : {};
+  const rTPS = rightRun ? (rightRun.category_tps || {}) : {};
+  const cats = CATS.filter(c => lTPS[c] || rTPS[c]);
+
+  if(!cats.length){
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x','50%'); t.setAttribute('y','50%'); t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','#6e7681'); t.setAttribute('font-size','13'); t.setAttribute('font-family','system-ui');
+    t.textContent = 'Run a benchmark to populate this chart.';
+    svg.appendChild(t);
+    svg.setAttribute('height','80');
+    return;
+  }
+  svg.setAttribute('height','240');
+
+  const W = svg.parentElement ? svg.parentElement.clientWidth || 600 : 600;
+  const H = 240, ML=46, MR=12, MT=16, MB=44;
+  const cW = W-ML-MR, cH = H-MT-MB;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+
+  const allV  = cats.flatMap(c=>[lTPS[c]||0,rTPS[c]||0]);
+  const maxV  = Math.max(...allV, 1) * 1.18;
+  const ns    = 'http://www.w3.org/2000/svg';
+  const el    = (tag,attrs) => { const e=document.createElementNS(ns,tag); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); return e; };
+  const g     = el('g',{transform:`translate(${ML},${MT})`});
+
+  // gridlines + y labels
+  for(let i=0;i<=4;i++){
+    const y  = cH - (i/4)*cH;
+    const v  = (i/4)*maxV;
+    g.appendChild(el('line',{x1:0,y1:y,x2:cW,y2:y,stroke:'#30363d','stroke-width':1}));
+    const yt = el('text',{x:-5,y:y+4,'text-anchor':'end',fill:'#6e7681','font-size':10,'font-family':'system-ui'});
+    yt.textContent = v.toFixed(0);
+    g.appendChild(yt);
+  }
+
+  // bars
+  const gW   = cW / cats.length;
+  const bW   = Math.min(gW * 0.32, 28);
+  const pad  = Math.min(gW * 0.06, 4);
+
+  cats.forEach((cat,i) => {
+    const cx = i * gW + gW / 2;
+
+    // left / baseline bar
+    const lv = lTPS[cat] || 0;
+    if(lv > 0){
+      const bh = (lv/maxV)*cH;
+      const rect = el('rect',{x:cx-pad-bW, y:cH-bh, width:bW, height:bh, fill:'#484f58', rx:2});
+      const tt = document.createElementNS(ns,'title'); tt.textContent = `Baseline ${LABELS[cat]||cat}: ${lv.toFixed(2)} tok/s`;
+      rect.appendChild(tt);
+      g.appendChild(rect);
+    }
+
+    // right / latest bar
+    const rv = rTPS[cat] || 0;
+    if(rv > 0){
+      const rh = (rv/maxV)*cH;
+      const rect2 = el('rect',{x:cx+pad, y:cH-rh, width:bW, height:rh, fill:'#58a6ff', rx:2});
+      const tt2 = document.createElementNS(ns,'title'); tt2.textContent = `Latest ${LABELS[cat]||cat}: ${rv.toFixed(2)} tok/s`;
+      rect2.appendChild(tt2);
+      g.appendChild(rect2);
+    }
+
+    // x label
+    const xt = el('text',{x:cx, y:cH+14,'text-anchor':'middle',fill:'#8b949e','font-size':10,'font-family':'system-ui'});
+    xt.textContent = LABELS[cat]||cat;
+    g.appendChild(xt);
+  });
+
+  svg.appendChild(g);
+}
+
+// ═══════════════════════════════════════════════════════════
+// History table
+// ═══════════════════════════════════════════════════════════
+function renderHistory(){
+  const wrap = $('histWrap');
+  if(!allRuns.length){
+    wrap.innerHTML = `<div class="empty">No benchmark results yet. Run a benchmark first.</div>`;
+    return;
+  }
+  let html = `<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>#</th><th>Timestamp</th><th>Model</th>
+      <th>Avg TPS</th><th>Median TPS</th><th>P95 TPS</th>
+      <th>Success</th><th>Prompts</th><th>Tokens</th>
+    </tr></thead><tbody>`;
+  allRuns.forEach((run,i) => {
+    const isRight = (run === rightRun);
+    const hasData = run.avg_tps > 0;
+    html += `<tr class="${isRight?'sel':''}" onclick="selectRun(${i})">
+      <td class="td-mono">${allRuns.length-i}</td>
+      <td class="td-mono">${fmtDate(run.timestamp)}</td>
+      <td>${esc(run.model||'Q4_K_M')} ${isRight ? '<span class="pill pill-b" style="font-size:10px">latest</span>' : ''}</td>
+      <td style="font-weight:700;color:${hasData?'var(--accent)':'var(--sub)'}">${hasData?fmt(run.avg_tps):'—'}</td>
+      <td>${hasData?fmt(run.median_tps):'—'}</td>
+      <td>${hasData?fmt(run.p95_tps):'—'}</td>
+      <td>${hasData?`<span class="pill pill-g">${fmtPct(run.success_rate)}</span>`:'<span class="pill pill-r">failed</span>'}</td>
+      <td>${run.total_prompts||'—'}</td>
+      <td>${run.max_tokens||'—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function selectRun(idx){
+  // Clicked run becomes the baseline (left); latest real run stays right
+  const clicked = allRuns[idx];
+  const realRuns = allRuns.filter(r => r.avg_tps > 0);
+  rightRun = realRuns.length > 0 ? realRuns[0] : allRuns[0];
+  leftRun  = clicked;
+
+  renderStats();
+  renderComparison();
+  renderChart();
+  renderHistory();
+
+  // Highlight
+  document.querySelectorAll('#histWrap tbody tr').forEach((tr,i) => tr.classList.toggle('sel', i===idx));
+
+  // Load JSON viewer
+  loadJV(clicked.filename);
+
+  // Jump to overview
+  showSec('overview');
+}
+
+// ═══════════════════════════════════════════════════════════
+// JSON Viewer
+// ═══════════════════════════════════════════════════════════
+function toggleJV(){
+  const open = $('jvBox').classList.toggle('open');
+  $('jvChev').textContent = open ? '▲' : '▼';
+}
+
+async function loadJV(filename){
+  if(!filename) return;
+  $('jvToggleRow').classList.remove('hidden');
+  $('jvFile').textContent = filename;
+  $('jvBox').classList.add('open');
+  $('jvChev').textContent = '▲';
+  $('jvPre').textContent = 'Loading…';
+  try{
+    const r = await fetch('/api/results/'+encodeURIComponent(filename)+'?full=1');
+    const d = await r.json();
+    $('jvPre').innerHTML = colorJson(JSON.stringify(d, null, 2));
+  } catch(e){
+    $('jvPre').textContent = 'Error: '+e.message;
+  }
+}
+
+function colorJson(json){
+  return esc(json)
+    .replace(/"([^"]+)"(\s*):/g,'<span class="jk">"$1"</span>$2:')
+    .replace(/:\s*"([^"]*)"/g,': <span class="js">"$1"</span>')
+    .replace(/:\s*(-?\d+\.?\d*)/g,': <span class="jn">$1</span>')
+    .replace(/:\s*(true|false)/g,': <span class="jb">$1</span>')
+    .replace(/:\s*(null)/g,': <span class="jz">null</span>');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Benchmark runner
+// ═══════════════════════════════════════════════════════════
+function toggleCfg(){
+  $('cfgPanel').classList.toggle('open');
+}
+
+async function startBench(){
+  if(benchRunning) return;
+  const url   = $('cfgUrl').value.trim();
+  const model = $('cfgModel').value.trim() || 'Q4_K_M';
+  const trials= parseInt($('cfgTrials').value)||3;
+  const tok   = parseInt($('cfgTok').value)||64;
+  if(!url){ alert('Enter a server URL'); return; }
+
+  benchRunning = true;
+  $('btnToggleCfg').disabled = true;
+  $('btnStart').disabled = true;
+  $('btnCancel').classList.remove('hidden');
+  $('cfgPanel').classList.remove('open');
+  $('benchResult').classList.add('hidden');
+
+  const log = $('logTerm');
+  log.classList.add('open');
+  log.textContent = '';
+  const addLog = (line, cls='') => {
+    log.textContent += line + '\n';
+    log.scrollTop = log.scrollHeight;
+  };
+
+  addLog(`[${new Date().toLocaleTimeString()}] Starting benchmark...`);
+  addLog(`  Server : ${url}`);
+  addLog(`  Model  : ${model}`);
+  addLog(`  Trials : ${trials}   Max-tokens: ${tok}`);
+  addLog('');
+
+  // POST to kick it off
+  try{
+    const r = await fetch('/api/benchmark', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({server_url:url, model, trials, max_tokens:tok}),
+    });
+    if(!r.ok){
+      const err = await r.text();
+      addLog('[ERROR] '+err);
+      resetBench();
+      return;
+    }
+    addLog('[OK] Benchmark process started. Streaming output…\n');
+  } catch(e){
+    addLog('[ERROR] '+e.message);
+    resetBench();
+    return;
+  }
+
+  // SSE stream
+  evtSrc = new EventSource('/api/benchmark/stream');
+  evtSrc.onmessage = evt => {
+    let d;
+    try { d = JSON.parse(evt.data); } catch{ return; }
+    if(d.type === 'connected'){
+      addLog('[Stream connected]');
+    } else if(d.type === 'log'){
+      addLog(d.line);
+    } else if(d.type === 'ping'){
+      // heartbeat – ignore
+    } else if(d.type === 'done'){
+      if(d.ok && d.summary){
+        addLog('\n✅ Benchmark complete!\n');
+        showBenchResult(d.summary);
+        loadAll(); // refresh everything
+      } else {
+        addLog('\n❌ Benchmark failed. Check the server URL and that llama-server is running.');
+        if(d.exit_code !== undefined) addLog('Exit code: '+d.exit_code);
+      }
+      resetBench();
+    }
+  };
+  evtSrc.onerror = () => {
+    addLog('\n[Stream closed]');
+    resetBench();
+  };
+}
+
+function showBenchResult(s){
+  const el = $('benchResult');
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="card" style="border-color:rgba(88,166,255,.35)">
+      <div class="card-ttl">Run Complete — ${fmtDate(s.timestamp)}</div>
+      <div class="g4 mt8">
+        <div><div class="si-lbl">Avg TPS</div><div style="font-size:24px;font-weight:700;color:var(--accent)">${fmt(s.avg_tps)}</div></div>
+        <div><div class="si-lbl">Median TPS</div><div style="font-size:24px;font-weight:700">${fmt(s.median_tps)}</div></div>
+        <div><div class="si-lbl">Success rate</div><div style="font-size:24px;font-weight:700;color:var(--green)">${fmtPct(s.success_rate)}</div></div>
+        <div><div class="si-lbl">Prompts run</div><div style="font-size:24px;font-weight:700">${s.total_prompts||'—'}</div></div>
+      </div>
+      <div class="row mt12" style="gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="showSec('overview')">View Comparison →</button>
+        <button class="btn btn-ghost btn-sm" onclick="showSec('history')">See History</button>
+      </div>
+    </div>`;
+}
+
+function cancelBench(){
+  if(evtSrc){ evtSrc.close(); evtSrc=null; }
+  $('logTerm').textContent += '\n[Cancelled by user]\n';
+  resetBench();
+}
+
+function resetBench(){
+  benchRunning = false;
+  $('btnToggleCfg').disabled = false;
+  $('btnStart').disabled = false;
+  $('btnCancel').classList.add('hidden');
+  if(evtSrc){ evtSrc.close(); evtSrc=null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Try It Live
+// ═══════════════════════════════════════════════════════════
+function usePreset(btn){ $('promptIn').value = btn.textContent.trim(); }
+
+async function sendPrompt(){
+  const prompt = $('promptIn').value.trim();
+  if(!prompt){ alert('Enter a prompt'); return; }
+  const url  = $('tryUrl').value.trim() || 'http://13.211.208.159:8080';
+  const tok  = parseInt($('tryTok').value)||256;
+  const temp = parseFloat($('tryTemp').value)||0.7;
+
+  const btn = $('btnSend');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin-el spin-sm"></div> Generating…';
+
+  const box = $('respBox'); box.classList.add('open');
+  $('respText').textContent = '';
+  $('respMeta').innerHTML   = '<div class="row" style="gap:8px"><div class="spin-el spin-sm"></div><span style="color:var(--dim)">Waiting…</span></div>';
+
+  try{
+    const r = await fetch('/api/prompt',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt, max_tokens:tok, temperature:temp, server_url:url}),
+    });
+    const d = await r.json();
+    if(d.ok){
+      $('respText').textContent = d.content || '(empty)';
+      $('respMeta').innerHTML = `
+        <span>⚡ <strong>${fmt(d.tokens_per_second)}</strong> tok/s</span>
+        <span>⏱ <strong>${fmt(d.duration_sec,3)}s</strong></span>
+        <span>📤 <strong>${d.tokens_generated}</strong> tokens generated</span>
+        <span>📥 <strong>${d.tokens_prompt}</strong> prompt tokens</span>`;
+    } else {
+      $('respText').textContent = 'Error: '+(d.error||'unknown');
+      $('respMeta').innerHTML = '';
+    }
+  } catch(e){
+    $('respText').textContent = 'Request failed: '+e.message;
+    $('respMeta').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '➤ Send';
+  }
+}
+
+function clearTry(){
+  $('respBox').classList.remove('open');
+  $('promptIn').value='';
+  $('respText').textContent='';
+  $('respMeta').innerHTML='';
+}
+
+$('promptIn').addEventListener('keydown', e => {
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendPrompt(); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// Resize → re-render chart
+// ═══════════════════════════════════════════════════════════
+let rTimer;
+window.addEventListener('resize',()=>{ clearTimeout(rTimer); rTimer=setTimeout(renderChart,180); });
+
+// Boot
+showSec('overview');
+</script>
+</body>
+</html>

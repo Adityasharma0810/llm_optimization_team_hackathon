@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name            = "specarm"
+version         = "0.1.0"
+description     = "SpecArm — Developer-experience CLI and MCP server for the Arm AI Optimization pipeline"
+requires-python = ">=3.10"
+dependencies    = [
+    "requests>=2.31.0",
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+specarm = "specarm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["specarm*"]
