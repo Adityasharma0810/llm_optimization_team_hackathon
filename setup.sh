@@ -285,14 +285,12 @@ success "Build completed successfully"
 step "Post-build verification"
 
 BINARIES=("llama-cli" "llama-server" "llama-quantize" "llama-bench")
-ALL_FOUND=true
 
 for bin in "${BINARIES[@]}"; do
     if [[ -x "${BUILD_DIR}/bin/${bin}" ]]; then
         success "bin/${bin} — executable"
     else
         warn "bin/${bin} — not found"
-        ALL_FOUND=false
     fi
 done
 
