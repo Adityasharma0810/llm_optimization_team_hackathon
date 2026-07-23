@@ -33,7 +33,27 @@ KleidiAI provides hardware-accelerated int8 matrix multiply (i8mm), SVE/SVE2 vec
 - GCC 11+
 - CMake 3.21+
 - Git
+- Python 3.10+
 - Internet connection
+
+### Python Dependencies
+
+The auto-tuning pipeline requires these Python packages:
+
+| Package | Purpose | Required |
+|---------|---------|----------|
+| `requests` | HTTP client for llama-server API | Yes |
+| `psutil` | Process/memory metrics collection | Yes |
+| `mcp` | Model Context Protocol server | Yes (for `specarm`) |
+
+Install all dependencies:
+
+```bash
+pip install -e .
+
+# Or install manually:
+pip install requests psutil
+```
 
 ---
 
@@ -154,9 +174,37 @@ candidate with the project workload, retains the existing highest-throughput
 configuration with a 100% success rate, and can optionally evaluate configured
 speculative-decoding draft lengths for that winner.
 
-The required argument is `--model-path`, which must point to the completed
-baseline model expected by the tuner. The target system must also have a built
-`llama-server` binary and a local GGUF model. For example:
+#### Pre-flight Checks
+
+Before tuning begins, the pipeline validates:
+
+1. **Dependencies** — required Python packages (`requests`, `psutil`) are installed
+2. **Server binary** — `llama-server` exists and is executable
+3. **Model file** — exists, is a regular `.gguf` file, and is readable
+4. **Baseline match** — model filename matches `qwen2.5-0.5b-instruct-fp16.gguf`
+5. **Port availability** — the requested port is not already in use
+
+If any check fails, the pipeline exits immediately with a clear error message
+explaining what failed and how to fix it.
+
+#### Required Model
+
+The tuner expects the baseline model:
+
+```
+qwen2.5-0.5b-instruct-fp16.gguf
+```
+
+Download it from Hugging Face:
+
+```bash
+mkdir -p ~/models
+huggingface-cli download Qwen/Qwen2.5-0.5B-Instruct-GGUF \
+  qwen2.5-0.5b-instruct-fp16.gguf \
+  --local-dir ~/models
+```
+
+#### Running Auto Tune
 
 ```bash
 python3 auto_tune.py \
@@ -177,6 +225,17 @@ python3 auto_tune.py \
   --draft-lengths 1 2 4 8 \
   --minimum-speculative-improvement 0.05
 ```
+
+#### Common Failures and Recovery
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Model file not found` | Wrong path or file not downloaded | Verify path; download the model |
+| `Expected baseline model` | Wrong filename | Download `qwen2.5-0.5b-instruct-fp16.gguf` |
+| `Port already in use` | Another server is running | Use `--port` or stop the other process |
+| `llama-server binary not found` | Not built | Run `./setup.sh` |
+| `Missing required Python packages` | Dependencies not installed | Run `pip install requests psutil` |
+| `ServerStartupError` | Server crashed during startup | Check server logs in the error output |
 
 The tuner writes its summary files under the selected output directory. See
 the generated-artifacts list below for details.

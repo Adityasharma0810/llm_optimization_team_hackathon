@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,9 +12,16 @@ from auto_tune import (
     AutoTuner,
     BaselineMetrics,
     BenchmarkRunner,
+    EXPECTED_BASELINE_MODEL,
+    MissingDependencyError,
+    ModelValidationError,
+    PortConflictError,
     ServerConfig,
     ServerManager,
     TuningResult,
+    check_dependencies,
+    check_port_available,
+    validate_model_path,
 )
 
 
@@ -41,10 +49,72 @@ class ServerConfigTests(TestCase):
             ServerConfig(2, 512, 256, 2048, "target.gguf", draft_model_path="draft.gguf")
 
 
+class ValidateModelPathTests(TestCase):
+    def test_missing_file_raises_model_validation_error(self) -> None:
+        with self.assertRaises(ModelValidationError) as ctx:
+            validate_model_path("/nonexistent/path/model.gguf")
+        self.assertIn("not found", str(ctx.exception))
+
+    def test_directory_raises_model_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dir_path = Path(tmpdir) / "not_a_file.gguf"
+            dir_path.mkdir()
+            with self.assertRaises(ModelValidationError) as ctx:
+                validate_model_path(str(dir_path))
+            self.assertIn("regular file", str(ctx.exception))
+
+    def test_wrong_extension_raises_model_validation_error(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            with self.assertRaises(ModelValidationError) as ctx:
+                validate_model_path(f.name)
+            self.assertIn(".gguf", str(ctx.exception))
+
+    def test_nonexistent_expected_filename_raises(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as f:
+            with self.assertRaises(ModelValidationError) as ctx:
+                validate_model_path(f.name, expected_filename="wrong_model.gguf")
+            self.assertIn("Expected baseline model", str(ctx.exception))
+            self.assertIn("wrong_model.gguf", str(ctx.exception))
+
+    def test_valid_model_passes(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as f:
+            result = validate_model_path(f.name)
+            self.assertEqual(result.suffix, ".gguf")
+            self.assertTrue(result.is_file())
+
+    def test_valid_model_with_matching_expected_filename(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as f:
+            name = Path(f.name).name
+            result = validate_model_path(f.name, expected_filename=name)
+            self.assertEqual(result.name, name)
+
+
+class CheckPortAvailableTests(TestCase):
+    def test_available_port_returns_true(self) -> None:
+        self.assertTrue(check_port_available("127.0.0.1", 19876))
+
+    @mock.patch("auto_tune.socket.socket")
+    def test_occupied_port_returns_false(self, mock_socket_cls: mock.Mock) -> None:
+        mock_sock = mock_socket_cls.return_value.__enter__.return_value
+        mock_sock.connect.return_value = None
+        self.assertFalse(check_port_available("127.0.0.1", 8080))
+
+
+class CheckDependenciesTests(TestCase):
+    @mock.patch("builtins.__import__", side_effect=ImportError("no"))
+    def test_missing_dependency_raises(self, mock_import: mock.Mock) -> None:
+        with self.assertRaises(MissingDependencyError) as ctx:
+            check_dependencies()
+        self.assertIn("Missing required", str(ctx.exception))
+
+
 class ServerManagerTests(TestCase):
     @mock.patch.object(ServerManager, "_wait_until_ready")
+    @mock.patch("auto_tune.check_port_available", return_value=True)
     @mock.patch("auto_tune.subprocess.Popen")
-    def test_start_and_stop_manage_one_process(self, popen: mock.Mock, ready: mock.Mock) -> None:
+    def test_start_and_stop_manage_one_process(
+        self, popen: mock.Mock, _port_check: mock.Mock, ready: mock.Mock
+    ) -> None:
         process = mock.Mock(pid=1234, stdout=StringIO(), stderr=StringIO())
         process.poll.side_effect = [None, None, 0]
         popen.return_value = process
@@ -53,6 +123,13 @@ class ServerManagerTests(TestCase):
         manager.stop()
         ready.assert_called_once()
         process.terminate.assert_called_once()
+
+    @mock.patch("auto_tune.check_port_available", return_value=False)
+    def test_start_raises_port_conflict_when_port_occupied(self, _port_check: mock.Mock) -> None:
+        manager = ServerManager(ServerConfig(2, 512, 256, 2048, "target.gguf"))
+        with self.assertRaises(PortConflictError) as ctx:
+            manager.start()
+        self.assertIn("already in use", str(ctx.exception))
 
 
 class BenchmarkWrapperTests(TestCase):

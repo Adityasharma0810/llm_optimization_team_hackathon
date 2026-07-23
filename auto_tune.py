@@ -11,8 +11,12 @@ from datetime import datetime, timezone
 from itertools import product
 import json
 import logging
+import os
 from pathlib import Path
+import signal
+import socket
 import subprocess
+import sys
 import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Optional
@@ -25,9 +29,153 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+EXPECTED_BASELINE_MODEL = "qwen2.5-0.5b-instruct-fp16.gguf"
+
+
+# ---------------------------------------------------------------------------
+# Custom exceptions
+# ---------------------------------------------------------------------------
+
 
 class ServerStartupError(RuntimeError):
     """Raised when llama-server exits or fails its readiness check at startup."""
+
+
+class ModelValidationError(RuntimeError):
+    """Raised when the supplied model path fails validation checks."""
+
+
+class PortConflictError(RuntimeError):
+    """Raised when the requested port is already in use."""
+
+
+class MissingDependencyError(RuntimeError):
+    """Raised when a required Python package is not installed."""
+
+
+# ---------------------------------------------------------------------------
+# Validation helpers
+# ---------------------------------------------------------------------------
+
+_REQUIRED_PACKAGES = {
+    "requests": "requests",
+    "psutil": "psutil",
+}
+
+
+def check_dependencies() -> None:
+    """Verify that required Python packages are importable.
+
+    Raises:
+        MissingDependencyError: With a friendly installation message.
+    """
+    missing: list[str] = []
+    for module_name, pip_name in _REQUIRED_PACKAGES.items():
+        try:
+            __import__(module_name)
+        except ImportError:
+            missing.append(pip_name)
+    if missing:
+        packages = " ".join(missing)
+        raise MissingDependencyError(
+            f"Missing required Python packages: {', '.join(missing)}.\n"
+            f"Install them with:  pip install {packages}"
+        )
+
+
+def validate_model_path(
+    model_path: str,
+    *,
+    expected_filename: str | None = None,
+) -> Path:
+    """Perform production-grade validation of the model file.
+
+    Checks:
+        - Path exists
+        - Path is a regular file (not a directory, symlink to dir, etc.)
+        - File has .gguf extension
+        - File is readable
+
+    Args:
+        model_path: Raw path string from the user.
+        expected_filename: If set, the filename must match exactly.
+
+    Returns:
+        Resolved, validated Path object.
+
+    Raises:
+        ModelValidationError: With a clear, actionable error message.
+    """
+    path = Path(model_path).expanduser().resolve()
+
+    if not path.exists():
+        raise ModelValidationError(
+            f"Model file not found:\n  {path}\n\n"
+            "How to fix:\n"
+            "  - Verify the path is correct.\n"
+            "  - Download a GGUF model from https://huggingface.co/models?search=gguf"
+        )
+
+    if not path.is_file():
+        kind = "directory" if path.is_dir() else "special file"
+        raise ModelValidationError(
+            f"Expected a regular file but found a {kind}:\n  {path}"
+        )
+
+    if path.suffix.lower() != ".gguf":
+        raise ModelValidationError(
+            f"Model file must have a .gguf extension.\n"
+            f"  Found: {path.name}\n"
+            f"  Expected extension: .gguf"
+        )
+
+    if not os.access(path, os.R_OK):
+        raise ModelValidationError(
+            f"Model file is not readable (permission denied):\n  {path}\n\n"
+            "How to fix:\n"
+            f"  chmod +r {path}"
+        )
+
+    if expected_filename is not None and path.name != expected_filename:
+        raise ModelValidationError(
+            f"Expected baseline model:\n  {expected_filename}\n\n"
+            f"Found:\n  {path.name}\n\n"
+            f"Full path: {path}\n\n"
+            "How to fix:\n"
+            f"  Download {expected_filename} or use --model-path pointing to it."
+        )
+
+    logger.info("Model validation passed: %s (%.1f MB)", path.name, path.stat().st_size / (1024 * 1024))
+    return path
+
+
+def check_port_available(host: str, port: int) -> bool:
+    """Return True if the given host:port is not currently in use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(1.0)
+        try:
+            sock.connect((host, port))
+            return False
+        except (ConnectionRefusedError, OSError):
+            return True
+
+
+def find_available_port(host: str, start_port: int) -> int:
+    """Find the first available port starting from ``start_port``.
+
+    Raises:
+        PortConflictError: If no port is available in the range [start, start+100).
+    """
+    for offset in range(100):
+        candidate = start_port + offset
+        if check_port_available(host, candidate):
+            return candidate
+    raise PortConflictError(
+        f"No available port found in range {start_port}-{start_port + 99} on {host}.\n"
+        "How to fix:\n"
+        "  - Stop other processes using ports in this range.\n"
+        "  - Use --port to specify a different port."
+    )
 
 
 @dataclass(frozen=True)
@@ -310,6 +458,7 @@ class ServerManager:
         Raises:
             RuntimeError: If a managed process is already running.
             ServerStartupError: If the process exits or does not become ready.
+            PortConflictError: If the requested port is already occupied.
         """
         if self.process is not None and self.process.poll() is None:
             raise RuntimeError("llama-server is already running")
@@ -317,6 +466,16 @@ class ServerManager:
         self._cleanup_finished_process()
         self._stdout_lines.clear()
         self._stderr_lines.clear()
+
+        if not check_port_available(self.config.host, self.config.port):
+            raise PortConflictError(
+                f"Port {self.config.port} on {self.config.host} is already in use.\n\n"
+                "How to fix:\n"
+                "  - Use --port to specify a different port.\n"
+                "  - Stop the process occupying this port.\n"
+                "  - The tuner will NOT connect to an existing server; it must launch its own."
+            )
+
         command = self.command()
         logger.info("Starting llama-server: %s", " ".join(command))
 
@@ -333,14 +492,20 @@ class ServerManager:
                 f"Could not launch llama-server at {self.config.server_binary}: {exc}"
             ) from exc
 
+        logger.info("llama-server process started (PID=%d)", self.process.pid)
         self._start_log_capture()
+        startup_start = time.monotonic()
         try:
             self._wait_until_ready()
         except ServerStartupError:
             self.stop()
             raise
 
-        logger.info("llama-server is ready at %s (pid=%d)", self.readiness_url, self.process.pid)
+        elapsed = time.monotonic() - startup_start
+        logger.info(
+            "llama-server ready at %s (PID=%d, startup=%.1fs)",
+            self.readiness_url, self.process.pid, elapsed,
+        )
         return self.process
 
     def stop(self) -> None:
@@ -375,30 +540,60 @@ class ServerManager:
         return self.start()
 
     def _wait_until_ready(self) -> None:
-        """Poll the health endpoint until ready, exited, or timed out."""
+        """Poll the health endpoint until ready, exited, or timed out.
+
+        The check order is:
+            1. Verify the process has not exited (captures crash / port conflict).
+            2. Poll the /health endpoint.
+            3. Continue only if BOTH checks succeed.
+
+        Raises:
+            ServerStartupError: If the process exits, health fails, or timeout.
+        """
         assert self.process is not None
         deadline = time.monotonic() + self.startup_timeout
+        attempt = 0
 
         while time.monotonic() < deadline:
+            attempt += 1
             return_code = self.process.poll()
             if return_code is not None:
+                stderr_output = "\n".join(self._stderr_lines) or "<no stderr captured>"
                 raise ServerStartupError(
-                    "llama-server exited during startup "
-                    f"with code {return_code}. Logs:\n{self._log_tail()}"
+                    f"llama-server exited during startup with code {return_code}.\n\n"
+                    f"Command: {' '.join(self.command())}\n"
+                    f"Stderr:\n{stderr_output}\n\n"
+                    "How to fix:\n"
+                    "  - Verify the model file exists and is a valid GGUF.\n"
+                    "  - Verify the server binary is built correctly.\n"
+                    "  - Check that the port is available."
                 )
 
             try:
                 with urlopen(self.readiness_url, timeout=self.poll_interval) as response:
                     if 200 <= response.status < 300:
+                        logger.debug("Health check succeeded on attempt %d", attempt)
                         return
             except (URLError, TimeoutError, OSError):
                 pass
+
+            elapsed = time.monotonic() - (deadline - self.startup_timeout)
+            if attempt % 20 == 0:
+                logger.info(
+                    "Waiting for llama-server startup... (%.0fs / %.0fs)",
+                    elapsed, self.startup_timeout,
+                )
 
             time.sleep(self.poll_interval)
 
         raise ServerStartupError(
             f"llama-server did not become ready at {self.readiness_url} "
-            f"within {self.startup_timeout:.1f}s. Logs:\n{self._log_tail()}"
+            f"within {self.startup_timeout:.1f}s.\n\n"
+            f"Server logs:\n{self._log_tail()}\n\n"
+            "How to fix:\n"
+            "  - Increase --startup-timeout if the model is large.\n"
+            "  - Check server logs above for errors.\n"
+            "  - Verify the model file is valid."
         )
 
     def _start_log_capture(self) -> None:
@@ -1183,6 +1378,22 @@ def _fractional_improvement(new_value: float, reference_value: float) -> float:
     return ((new_value - reference_value) / reference_value) if reference_value else 0.0
 
 
+def _setup_signal_handlers(manager: ServerManager | None) -> None:
+    """Install SIGINT/SIGTERM handlers that cleanly shut down the server."""
+    def _shutdown(signum: int, _frame: Any) -> None:
+        sig_name = signal.Signals(signum).name
+        logger.warning("Received %s — shutting down gracefully", sig_name)
+        if manager is not None:
+            try:
+                manager.stop()
+            except Exception:
+                pass
+        raise SystemExit(130 if signum == signal.SIGINT else 143)
+
+    signal.signal(signal.SIGINT, _shutdown)
+    signal.signal(signal.SIGTERM, _shutdown)
+
+
 def _main() -> int:
     """Run one reproducible real-benchmark grid against a fixed GGUF model."""
     parser = argparse.ArgumentParser(description="Auto-tune llama-server on one fixed model.")
@@ -1206,8 +1417,36 @@ def _main() -> int:
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+    # -- Step 1: Dependency validation --
+    try:
+        check_dependencies()
+    except MissingDependencyError as exc:
+        logger.error("%s", exc)
+        return 1
+
+    # -- Step 2: Server binary validation --
+    if not args.server_binary.exists():
+        logger.error(
+            "llama-server binary not found: %s\n\n"
+            "How to fix:\n"
+            "  - Run ./setup.sh to build llama.cpp with KleidiAI.\n"
+            "  - Or specify --server-binary pointing to the built llama-server.",
+            args.server_binary,
+        )
+        return 1
+    if not os.access(args.server_binary, os.X_OK):
+        logger.error(
+            "llama-server binary is not executable: %s\n\n"
+            "How to fix:\n"
+            "  chmod +x %s",
+            args.server_binary, args.server_binary,
+        )
+        return 1
+
+    # -- Step 3: Model validation --
     baseline = BaselineMetrics(
-        model="qwen2.5-0.5b-instruct-fp16.gguf",
+        model=EXPECTED_BASELINE_MODEL,
         avg_tps=29.63,
         avg_ttft_ms=515.6,
         avg_latency_ms=28.8,
@@ -1216,13 +1455,31 @@ def _main() -> int:
         batch_size=512,
         max_tokens=128,
     )
-    if Path(args.model_path).name != baseline.model:
-        parser.error(
-            "--model-path must reference the completed baseline model "
-            f"({baseline.model}); model changes are outside this tuner"
+    try:
+        validated_model_path = validate_model_path(
+            args.model_path, expected_filename=baseline.model,
         )
+    except ModelValidationError as exc:
+        logger.error("Model validation failed:\n%s", exc)
+        return 1
+
+    # -- Step 4: Port conflict detection --
+    if not check_port_available(args.host, args.port):
+        logger.error(
+            "Port %d on %s is already in use.\n\n"
+            "How to fix:\n"
+            "  - Use --port to specify a different port.\n"
+            "  - Stop the process using this port.\n"
+            "  - The tuner will NOT connect to an existing server.",
+            args.port, args.host,
+        )
+        return 1
+
+    logger.info("Configuration validated — port %d:%s available", args.port, args.host)
+
+    # -- Step 5: Build candidates --
     candidates = AutoTuner.build_candidates(
-        model_path=args.model_path,
+        model_path=str(validated_model_path),
         threads=args.threads,
         batch_sizes=args.batch_sizes,
         ubatch_sizes=args.ubatch_sizes,
@@ -1241,6 +1498,10 @@ def _main() -> int:
         startup_timeout=args.startup_timeout,
     )
 
+    # -- Step 6: Run tuning with signal handling and cleanup --
+    active_manager: ServerManager | None = None
+    _setup_signal_handlers(active_manager)
+
     try:
         controller = None
         if args.draft_model_path:
@@ -1256,20 +1517,65 @@ def _main() -> int:
                 output_directory=args.output / "speculative",
             )
         runs = tuner.run(candidates, speculative_controller=controller)
-    except ValueError as exc:
-        print(f"Auto-tuning setup failed: {exc}")
+    except (ValueError, ServerStartupError, PortConflictError) as exc:
+        logger.error("Auto-tuning failed: %s", exc)
+        _save_failure_report(tuner, str(exc))
+        return 1
+    except KeyboardInterrupt:
+        logger.warning("Tuning interrupted by user — saving partial results")
+        _save_failure_report(tuner, "Interrupted by user (Ctrl+C)")
+        return 130
+    except Exception as exc:
+        logger.exception("Unexpected error during auto-tuning")
+        _save_failure_report(tuner, f"Unexpected error: {exc}")
         return 1
 
     best = tuner._best_run(runs)
-    print(f"Auto-tuning completed: {len(runs)} configuration(s) tested.")
+    succeeded = sum(1 for run in runs if run.status == "completed")
+    logger.info(
+        "Auto-tuning completed: %d/%d configuration(s) succeeded.",
+        succeeded, len(runs),
+    )
     if best is not None and best.result is not None:
-        print("Best configuration:", _server_config_to_dict(best.config))
-        print("Best result:", best.result)
+        logger.info("Best configuration: threads=%d batch=%d ubatch=%d context=%d (%.2f TPS)",
+                     best.config.threads, best.config.batch_size,
+                     best.config.ubatch_size, best.config.context_size,
+                     best.result.avg_tps)
     else:
-        print("No configuration completed with 100% success rate.")
+        logger.warning("No configuration completed with 100%% success rate.")
     if tuner.speculative_decision is not None:
-        print("Speculative decision:", "ENABLE" if tuner.speculative_decision.speculation_enabled else "DISABLE")
+        logger.info("Speculative decoding: %s",
+                     "ENABLED" if tuner.speculative_decision.speculation_enabled else "DISABLED")
     return 0
+
+
+def _save_failure_report(tuner: AutoTuner, reason: str) -> None:
+    """Save a report explaining why tuning could not proceed.
+
+    This prevents generating misleading benchmark reports when tuning
+    fails before any benchmarks are run.
+    """
+    try:
+        tuner.output_directory.mkdir(parents=True, exist_ok=True)
+        report_path = tuner.output_directory / "tuning_report.md"
+        report_content = (
+            "# Auto-Tuning Report\n\n"
+            "## Status: FAILED\n\n"
+            f"**Reason:** {reason}\n\n"
+            "## What happened\n\n"
+            "The auto-tuning pipeline could not start or complete benchmarking.\n\n"
+            "## How to fix\n\n"
+            "Review the error message above for specific guidance.\n"
+            "Common causes:\n"
+            "- Missing or invalid model file\n"
+            "- Port conflict with another process\n"
+            "- llama-server binary not found or not executable\n"
+            "- Missing Python dependencies\n"
+        )
+        report_path.write_text(report_content, encoding="utf-8")
+        logger.info("Failure report saved to %s", report_path)
+    except Exception:
+        logger.warning("Could not save failure report")
 
 
 if __name__ == "__main__":

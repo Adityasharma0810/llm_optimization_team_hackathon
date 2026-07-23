@@ -9,7 +9,19 @@ description     = "SpecArm — Developer-experience CLI and MCP server for the A
 requires-python = ">=3.10"
 dependencies    = [
     "requests>=2.31.0",
+    "psutil>=5.9.0",
     "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dashboard = [
+    "flask>=3.0.0",
+]
+full = [
+    "flask>=3.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
 ]
 
 [project.scripts]
